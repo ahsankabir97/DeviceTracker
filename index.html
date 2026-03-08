@@ -948,32 +948,13 @@ async function initGoogleSheets(url){
   gsUrl = url;
   setConnBar('connecting');
   try{
-    const res = await gsGet();
-    // Try to load existing state from Sheet
-    let loaded = false;
-    if(res){
-      let parsed = null;
-      if(res.data && res.data !== '{}'){
-        try{ parsed = JSON.parse(res.data); }catch(e){}
-      } else if(res.action === 'syncAll'){
-        parsed = res;
-      }
-      if(parsed && parsed._raw){
-        applyRemoteData(parsed);
-        _lastTs = res.ts || parsed.ts || '';
-        loaded = true;
-        toast('📊 Sheet থেকে সব data লোড হয়েছে ✅','ok');
-      }
-    }
+    // Fresh start — Sheet এর পুরনো data load করব না, empty state push করব
     gsReady = true;
     setConnBar('online');
+    toast('📊 Connected! Sheet reset হচ্ছে — fresh start...','inf');
+    await gsPush(); // empty devs/doneList/deletedList push করে Sheet clear করে
     startPolling();
-    if(!loaded){
-      // Sheet empty — push current local data up
-      toast('📊 Connected! Local data Sheet এ upload হচ্ছে...','inf');
-      await gsPush();
-    }
-    toast('📊 Live sync চালু — সবার data প্রতি ৩ সেকেন্ডে update হবে','ok');
+    toast('✅ Google Sheets connected — Fresh start ready!','ok');
   }catch(e){
     setConnBar('offline');
     toast('❌ Connection failed — URL আবার check করুন','err');
@@ -1116,20 +1097,19 @@ function startPolling(){
     try{
       const res = await gsGet();
       if(!res) return;
-      // Sheet stores the full syncAll payload as JSON string in data field
       let parsed;
       if(res.data && res.data !== '{}'){
         try{ parsed = JSON.parse(res.data); }catch(e){ return; }
       } else if(res.action === 'syncAll'){
-        parsed = res; // direct payload
+        parsed = res;
       } else { return; }
 
-      // Check timestamp — skip if we pushed this ourselves
+      // Skip if we pushed this ourselves
       const remoteTs = res.ts || parsed.ts || '';
       if(remoteTs && remoteTs === _lastTs) return;
       _lastTs = remoteTs;
       applyRemoteData(parsed);
-    }catch(e){ /* silent — temporary network issue */ }
+    }catch(e){ /* silent */ }
   }, 3000);
 }
 
@@ -1765,6 +1745,16 @@ function rerender(){
 updateStats();
 rebuildTypeSelect();
 document.getElementById('T-home').style.display='';
+
+// ── FRESH START — পুরনো সব localStorage data মুছে দাও ──
+(function(){
+  localStorage.removeItem('onu_devs');
+  localStorage.removeItem('onu_done');
+  localStorage.removeItem('onu_deleted');
+  localStorage.removeItem('onu_models');
+  localStorage.removeItem('onu_types');
+  // gs_url রাখো — user আবার URL দিতে না হয় যদি আগে দেওয়া থাকে
+})();
 
 // ── GOOGLE SHEETS AUTO-INIT on load ──
 (function(){
