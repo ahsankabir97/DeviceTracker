@@ -72,12 +72,12 @@ body>*{position:relative;z-index:1;}
   box-shadow:0 0 0 2px rgba(0,128,240,0.7),0 0 0 4px rgba(255,255,255,0.12),0 4px 16px rgba(0,0,0,0.4);}
 .logo-divider{width:1px;height:38px;background:linear-gradient(180deg,transparent,rgba(0,128,240,0.5),transparent);}
 .logo-title{display:flex;flex-direction:column;}
-.logo-main{font-size:1.15rem;font-weight:700;color:#fff;letter-spacing:0.6px;line-height:1.15;
+.logo-main{font-size:1.45rem;font-weight:700;color:#fff;letter-spacing:0.6px;line-height:1.15;
   font-family:'Oswald','Plus Jakarta Sans',sans-serif;
   background:linear-gradient(90deg,#fff 0%,#a8d4ff 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
   text-shadow:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.3));}
-.logo-sub{font-size:0.5rem;color:#40b4ff;letter-spacing:3px;text-transform:uppercase;
+.logo-sub{font-size:0.62rem;color:#40b4ff;letter-spacing:3px;text-transform:uppercase;
   font-weight:800;margin-top:3px;-webkit-text-fill-color:#40b4ff;
   text-shadow:0 0 10px rgba(0,180,255,0.5);}
 .stats-bar{display:flex;gap:5px;}
@@ -124,8 +124,8 @@ body>*{position:relative;z-index:1;}
   border-left:2px solid rgba(0,87,168,0.2);
 }
 .tab-btn{
-  padding:0 15px;height:36px;
-  font-size:0.7rem;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;
+  padding:0 18px;height:42px;
+  font-size:0.85rem;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;
   background:rgba(0,87,168,0.06);border:1.5px solid rgba(0,87,168,0.18);border-radius:9px;
   color:var(--muted);cursor:pointer;transition:all 0.22s cubic-bezier(0.34,1.56,0.64,1);
   white-space:nowrap;display:flex;align-items:center;gap:6px;
@@ -149,8 +149,8 @@ body>*{position:relative;z-index:1;}
 /* ── MANAGE DROPDOWN ── */
 .manage-wrap{position:relative;}
 .manage-btn{
-  height:36px;padding:0 15px;
-  font-size:0.7rem;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;
+  height:42px;padding:0 18px;
+  font-size:0.85rem;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;
   background:linear-gradient(135deg,var(--l3-deeper),var(--l3-dark),var(--l3));
   color:#fff;border:1.5px solid rgba(0,128,240,0.35);border-radius:9px;
   cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;
@@ -948,13 +948,25 @@ async function initGoogleSheets(url){
   gsUrl = url;
   setConnBar('connecting');
   try{
-    // Fresh start — Sheet এর পুরনো data load করব না, empty state push করব
+    // Sheet থেকে সবার existing data আগে load করো (multi-user merge এর জন্য)
+    const res = await gsGet();
+    if(res){
+      let parsed = null;
+      if(res.data && res.data !== '{}'){
+        try{ parsed = JSON.parse(res.data); }catch(e){}
+      } else if(res.action === 'syncAll'){
+        parsed = res;
+      }
+      if(parsed && parsed._raw){
+        applyRemoteData(parsed);
+        _lastTs = res.ts || parsed.ts || '';
+        toast('📊 Sheet থেকে সবার data লোড হয়েছে ✅','ok');
+      }
+    }
     gsReady = true;
     setConnBar('online');
-    toast('📊 Connected! Sheet reset হচ্ছে — fresh start...','inf');
-    await gsPush(); // empty devs/doneList/deletedList push করে Sheet clear করে
     startPolling();
-    toast('✅ Google Sheets connected — Fresh start ready!','ok');
+    toast('📊 Live sync চালু — সবার data একসাথে থাকবে','ok');
   }catch(e){
     setConnBar('offline');
     toast('❌ Connection failed — URL আবার check করুন','err');
@@ -1018,7 +1030,39 @@ function buildSyncPayload(){
   };
 }
 
-// WRITE to Sheet — POST with text/plain body (Apps Script reads e.postData.contents)
+// ── ID-based merge: Sheet এর data + local data একসাথে করো, duplicate বাদ দাও ──
+function mergeWithRemote(remoteRaw){
+  const mergeArr = (local, remote) => {
+    // remote এর সব item রাখো, তারপর local এর নতুন item (id নেই remote-এ) যোগ করো
+    const remoteIds = new Set((remote||[]).map(x=>x.id));
+    const localOnly = (local||[]).filter(x=>!remoteIds.has(x.id));
+    // local এ updated version থাকলে সেটা নাও (local is authoritative for own changes)
+    const localIds = new Set((local||[]).map(x=>x.id));
+    const remoteOnly = (remote||[]).filter(x=>!localIds.has(x.id));
+    return [...(local||[]), ...remoteOnly];
+  };
+  if(remoteRaw && Array.isArray(remoteRaw.devs)){
+    devs = mergeArr(devs, remoteRaw.devs);
+  }
+  if(remoteRaw && Array.isArray(remoteRaw.doneList)){
+    doneList = mergeArr(doneList, remoteRaw.doneList);
+  }
+  if(remoteRaw && Array.isArray(remoteRaw.deletedList)){
+    deletedList = mergeArr(deletedList, remoteRaw.deletedList);
+  }
+  if(remoteRaw && remoteRaw.models && typeof remoteRaw.models==='object'){
+    // models merge — remote এর extra types/models যোগ করো
+    Object.keys(remoteRaw.models).forEach(t=>{
+      if(!models[t]) models[t]=[];
+      (remoteRaw.models[t]||[]).forEach(m=>{ if(!models[t].includes(m)) models[t].push(m); });
+    });
+  }
+  if(remoteRaw && Array.isArray(remoteRaw.customTypes)){
+    remoteRaw.customTypes.forEach(t=>{ if(!customTypes.includes(t)) customTypes.push(t); });
+  }
+}
+
+// WRITE to Sheet — push করার আগে remote data merge করো (multi-user safe)
 async function gsPush(){
   if(!gsUrl){ return; }
   if(_saving){ _saveQueue = true; return; }
@@ -1026,9 +1070,32 @@ async function gsPush(){
   _saveQueue = false;
   setSyncDot('saving');
   try{
+    // Step 1: Sheet থেকে latest data নাও
+    try{
+      const res = await gsGet();
+      if(res){
+        let remoteRaw = null;
+        if(res.data && res.data !== '{}'){
+          try{ const p=JSON.parse(res.data); remoteRaw = p._raw||null; }catch(e){}
+        } else if(res._raw){
+          remoteRaw = res._raw;
+        }
+        const remoteTs = res.ts || '';
+        // শুধু remote এ নতুন data থাকলে merge করো (নিজের push এর echo skip)
+        if(remoteTs && remoteTs !== _lastTs && remoteRaw){
+          mergeWithRemote(remoteRaw);
+          // local save করো — UI update
+          localStorage.setItem('onu_devs', JSON.stringify(devs));
+          localStorage.setItem('onu_done', JSON.stringify(doneList));
+          localStorage.setItem('onu_deleted', JSON.stringify(deletedList));
+          updateStats(); rebuildTypeSelect(); rerender();
+        }
+      }
+    }catch(fetchErr){ /* merge fail হলেও push চালিয়ে যাও */ }
+
+    // Step 2: merged data push করো
     const payload = buildSyncPayload();
     const body = JSON.stringify(payload);
-    // text/plain avoids CORS preflight — Apps Script receives via e.postData.contents
     const r = await fetch(gsUrl, {
       method: 'POST',
       mode: 'cors',
@@ -1039,7 +1106,6 @@ async function gsPush(){
     setSyncDot('ok');
     _lastTs = payload.ts;
   }catch(e){
-    // Fallback: no-cors (fire and forget — can't read response but data saves)
     try{
       await fetch(gsUrl, {
         method: 'POST',
@@ -1075,19 +1141,13 @@ function setSyncDot(state){
 }
 
 function applyRemoteData(d){
+  // polling থেকে আসা remote data — local এর সাথে ID-based merge করো
   const raw = d._raw || d;
-  let changed = false;
-  if(Array.isArray(raw.devs)){ devs = raw.devs; changed = true; }
-  if(Array.isArray(raw.doneList)){ doneList = raw.doneList; changed = true; }
-  if(Array.isArray(raw.deletedList)){ deletedList = raw.deletedList; changed = true; }
-  if(raw.models && typeof raw.models==='object'){ models = raw.models; }
-  if(Array.isArray(raw.customTypes)){ customTypes = raw.customTypes; }
-  if(changed){
-    localStorage.setItem('onu_devs', JSON.stringify(devs));
-    localStorage.setItem('onu_done', JSON.stringify(doneList));
-    localStorage.setItem('onu_deleted', JSON.stringify(deletedList));
-    updateStats(); rebuildTypeSelect(); rerender();
-  }
+  mergeWithRemote(raw);
+  localStorage.setItem('onu_devs', JSON.stringify(devs));
+  localStorage.setItem('onu_done', JSON.stringify(doneList));
+  localStorage.setItem('onu_deleted', JSON.stringify(deletedList));
+  updateStats(); rebuildTypeSelect(); rerender();
 }
 
 function startPolling(){
@@ -1745,16 +1805,6 @@ function rerender(){
 updateStats();
 rebuildTypeSelect();
 document.getElementById('T-home').style.display='';
-
-// ── FRESH START — পুরনো সব localStorage data মুছে দাও ──
-(function(){
-  localStorage.removeItem('onu_devs');
-  localStorage.removeItem('onu_done');
-  localStorage.removeItem('onu_deleted');
-  localStorage.removeItem('onu_models');
-  localStorage.removeItem('onu_types');
-  // gs_url রাখো — user আবার URL দিতে না হয় যদি আগে দেওয়া থাকে
-})();
 
 // ── GOOGLE SHEETS AUTO-INIT on load ──
 (function(){
