@@ -365,6 +365,29 @@ table.ua-tbl tbody tr:last-child td{border-bottom:none;}
 .reset-warning{background:rgba(254,226,226,0.5);border:1.5px solid rgba(253,164,175,0.5);border-radius:10px;padding:14px;margin-bottom:16px;}
 .reset-warning p{font-size:0.78rem;color:#7f1d1d;line-height:1.6;font-weight:500;}
 .reset-warning strong{color:var(--danger);}
+/* ── ROW DELETE ICON ── */
+.row-del-btn{
+  background:none;border:none;cursor:pointer;
+  color:var(--danger);font-size:0.78rem;padding:2px 5px;
+  border-radius:4px;transition:all 0.15s;opacity:0.55;
+  line-height:1;vertical-align:middle;
+}
+.row-del-btn:hover{background:var(--danger-light);opacity:1;transform:scale(1.15);}
+/* ── RESTORE / PERM DELETE BUTTONS ── */
+.btn-restore{
+  padding:4px 10px;border-radius:6px;border:1.5px solid rgba(4,120,87,0.4);
+  font-size:0.65rem;font-weight:700;cursor:pointer;
+  background:var(--done-light);color:var(--done);
+  transition:all 0.15s;
+}
+.btn-restore:hover{background:var(--done);color:#fff;}
+.btn-perm-del{
+  padding:4px 10px;border-radius:6px;border:1.5px solid #fda4af;
+  font-size:0.65rem;font-weight:700;cursor:pointer;margin-left:5px;
+  background:var(--danger-light);color:var(--danger);
+  transition:all 0.15s;
+}
+.btn-perm-del:hover{background:var(--danger);color:#fff;}
 </style>
 </head>
 <body>
@@ -494,9 +517,9 @@ function out(s){<br>
           <div><div style="font-weight:700">Unassigned Equipment <span class="tbadge" id="b-unassigned" style="background:rgba(14,116,144,0.15);color:var(--unassigned);margin-left:4px">0</span></div><div style="font-size:0.62rem;color:var(--muted);margin-top:1px">Assign to person</div></div>
         </div>
         <div class="dd-divider"></div>
-        <div class="manage-dd-item danger-item" onclick="openResetConfirm()">
-          <div class="mdi mi-red">🗑</div>
-          <div><div style="font-weight:700">Reset All Data</div><div style="font-size:0.62rem;color:var(--danger);margin-top:1px">সব data মুছে ফেলুন</div></div>
+        <div class="manage-dd-item" id="dd-deleted" onclick="goManage('deleted')">
+          <div class="mdi" style="background:rgba(180,83,9,0.12);color:#b45309">🗑</div>
+          <div><div style="font-weight:700">Deleted Data <span class="tbadge" id="b-deleted" style="background:rgba(180,83,9,0.15);color:#b45309;margin-left:4px">0</span></div><div style="font-size:0.62rem;color:var(--muted);margin-top:1px">Restore করুন আগের জায়গায়</div></div>
         </div>
         <div class="dd-divider"></div>
         <div class="manage-dd-item" onclick="openFbSetup();closeManageDD()">
@@ -563,7 +586,7 @@ function out(s){<br>
   <div class="twrap stbl">
     <table class="dt"><thead><tr>
       <th>#</th><th>Person</th><th>Type</th><th>Model</th><th>S/N</th><th>MAC</th>
-      <th>Provided To</th><th>Client ID</th><th>Ticket ID</th><th>Entry Date</th><th>Provide Date</th><th>Done Date</th><th>Remarks</th>
+      <th>Provided To</th><th>Client ID</th><th>Ticket ID</th><th>Entry Date</th><th>Provide Date</th><th>Done Date</th><th>Remarks</th><th></th>
     </tr></thead><tbody id="doneBody"></tbody></table>
   </div>
 </div>
@@ -643,7 +666,7 @@ or:   GPOND001, GPOND002, GPOND003"
   </div>
   <div class="twrap stbl">
     <table class="dt"><thead><tr>
-      <th>#</th><th>Person</th><th>Type</th><th>Model</th><th>S/N</th><th>MAC</th><th>Status</th><th>Provided To</th><th>Entry Date</th>
+      <th>#</th><th>Person</th><th>Type</th><th>Model</th><th>S/N</th><th>MAC</th><th>Status</th><th>Provided To</th><th>Entry Date</th><th></th>
     </tr></thead><tbody id="allBody"></tbody></table>
   </div>
 </div>
@@ -664,6 +687,25 @@ or:   GPOND001, GPOND002, GPOND003"
     <table class="ua-tbl"><thead><tr>
       <th>#</th><th>Type</th><th>Model</th><th>S/N</th><th>MAC</th><th>Entry Date</th><th>Assign To</th>
     </tr></thead><tbody id="uaBody"></tbody></table>
+  </div>
+</div>
+
+
+<!-- DELETED DATA -->
+<div id="T-deleted" style="display:none">
+  <div class="sec-hdr">
+    <div class="sec-title"><div class="dot" style="background:#b45309"></div>Deleted Data</div>
+    <div class="fbar" style="margin:0">
+      <input id="delSearch" onkeyup="renderDeleted()" placeholder="🔍 Search S/N, model...">
+    </div>
+  </div>
+  <p style="color:var(--text2);font-size:0.77rem;margin-bottom:14px;font-weight:500;">
+    Dashboard থেকে delete করা items। <b>Restore</b> করলে আগের জায়গায় ফিরে যাবে এবং Google Sheet এ row আবার স্বাভাবিক হবে।
+  </p>
+  <div class="ua-wrap stbl">
+    <table class="ua-tbl"><thead><tr>
+      <th>#</th><th>Type</th><th>Model</th><th>S/N</th><th>MAC</th><th>Person</th><th>Status</th><th>Entry Date</th><th>Deleted At</th><th>Delete Remarks</th><th>Action</th>
+    </tr></thead><tbody id="deletedBody"></tbody></table>
   </div>
 </div>
 
@@ -829,6 +871,33 @@ or:   GPOND001, GPOND002, GPOND003"
   </div>
 </div>
 
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="moverlay" id="M-deleteConfirm">
+  <div class="modal" style="max-width:440px">
+    <div class="mhdr">
+      <div class="micon mi-red" style="font-size:1.4rem;">🗑️</div>
+      <div>
+        <div class="mtitle" style="color:var(--danger)">Delete Item</div>
+        <div class="msub">এই item টি কেন delete করছেন?</div>
+      </div>
+    </div>
+    <input type="hidden" id="m_del_id">
+    <input type="hidden" id="m_del_type"><!-- 'dev' or 'done' -->
+    <div style="background:rgba(190,18,60,0.06);border:1.5px solid rgba(190,18,60,0.18);border-radius:10px;padding:13px 15px;margin-bottom:16px;">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--danger);margin-bottom:4px;">⚠️ Why are you deleting this item?</div>
+      <div style="font-size:0.72rem;color:var(--muted);line-height:1.55;">Delete করার পর <b style="color:var(--danger)">Deleted Data</b> tab এ চলে যাবে। সেখান থেকে Restore করা যাবে।</div>
+    </div>
+    <div class="fg mb13">
+      <label style="font-size:0.65rem;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text2);">Delete কারণ / Remarks <span style="color:var(--danger)">*</span></label>
+      <textarea class="fc" id="m_del_remarks" placeholder="যেমন: ভুল entry, নষ্ট device, duplicate S/N..." rows="3" style="resize:vertical;font-size:0.8rem;line-height:1.6;"></textarea>
+    </div>
+    <div class="mactions">
+      <button class="btn btn-secondary" onclick="closeM('M-deleteConfirm');document.getElementById('m_del_remarks').value=''">বাতিল</button>
+      <button class="btn btn-danger" onclick="confirmDeleteWithRemarks()">🗑 Delete করুন</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-c" id="toastC"></div>
 
 <script>
@@ -844,8 +913,8 @@ or:   GPOND001, GPOND002, GPOND003"
 const PERSONS={rupchan:'Rupchan',tamim:'Tamim',amit:'Amit',nazrul:'Nazrul'};
 const PKEYS=['rupchan','tamim','amit','nazrul'];
 const DEFAULT_TYPES=['ONU','MC','WiFi Router','MikroTik Router','Radio'];
-const MANAGE_TABS=['entry','all','unassigned'];
-const ALL_PANELS=['person','provided','done','entry','all','unassigned','home'];
+const MANAGE_TABS=['entry','all','unassigned','deleted'];
+const ALL_PANELS=['person','provided','done','entry','all','unassigned','deleted','home'];
 
 // ═══════════════════════════════════════
 // GOOGLE SHEETS LIVE SYNC
@@ -957,8 +1026,14 @@ function buildSyncPayload(){
       entryDate:d.entryDate||'', provideDate:d.provideDate||'',
       doneDate:d.doneDate||'', remarks:d.remarks||''
     })),
+    deleted: deletedList.map(d=>({
+      person:PM[d.person]||d.person||'Unassigned', type:d.itemType||'', model:d.model||'',
+      sn:d.sn||'', mac:d.mac||'', status:d._fromList==='doneList'?'Done':d.status==='provided'?'Provided':'In-Hand',
+      entryDate:d.entryDate||'', deletedAt:d._deletedAt?d._deletedAt.split('T')[0]:'',
+      deleteRemarks:d._deleteRemarks||''
+    })),
     // Also store raw data for other users to load full state
-    _raw: { devs, doneList, models, customTypes }
+    _raw: { devs, doneList, deletedList, models, customTypes }
   };
 }
 
@@ -1019,14 +1094,19 @@ function setSyncDot(state){
 }
 
 function applyRemoteData(d){
-  // d is the parsed payload from Sheet — contains _raw with full state
   const raw = d._raw || d;
   let changed = false;
   if(Array.isArray(raw.devs)){ devs = raw.devs; changed = true; }
   if(Array.isArray(raw.doneList)){ doneList = raw.doneList; changed = true; }
+  if(Array.isArray(raw.deletedList)){ deletedList = raw.deletedList; changed = true; }
   if(raw.models && typeof raw.models==='object'){ models = raw.models; }
   if(Array.isArray(raw.customTypes)){ customTypes = raw.customTypes; }
-  if(changed){ updateStats(); rebuildTypeSelect(); rerender(); }
+  if(changed){
+    localStorage.setItem('onu_devs', JSON.stringify(devs));
+    localStorage.setItem('onu_done', JSON.stringify(doneList));
+    localStorage.setItem('onu_deleted', JSON.stringify(deletedList));
+    updateStats(); rebuildTypeSelect(); rerender();
+  }
 }
 
 function startPolling(){
@@ -1073,6 +1153,7 @@ function setConnBar(state){
 function loadFromLocalStorage(){
   devs = JSON.parse(localStorage.getItem('onu_devs')||'[]');
   doneList = JSON.parse(localStorage.getItem('onu_done')||'[]');
+  deletedList = JSON.parse(localStorage.getItem('onu_deleted')||'[]');
   models = JSON.parse(localStorage.getItem('onu_models')||JSON.stringify({
     ONU:['V.SOL V2801SG XPON','V.SOL H665G'],
     MC:['MC-10/100','MC-SFP Fiber'],
@@ -1087,6 +1168,7 @@ function loadFromLocalStorage(){
 function save(){
   localStorage.setItem('onu_devs', JSON.stringify(devs));
   localStorage.setItem('onu_done', JSON.stringify(doneList));
+  localStorage.setItem('onu_deleted', JSON.stringify(deletedList));
   localStorage.setItem('onu_models', JSON.stringify(models));
   localStorage.setItem('onu_types', JSON.stringify(customTypes));
   updateStats();
@@ -1100,6 +1182,7 @@ function saveCustomTypes(){ save(); }
 
 let devs = [];
 let doneList = [];
+let deletedList = []; // soft-deleted items — persisted in localStorage
 let models = {
   ONU:['V.SOL V2801SG XPON','V.SOL H665G'],
   MC:['MC-10/100','MC-SFP Fiber'],
@@ -1185,6 +1268,7 @@ function showTab(tab){
   else if(tab==='entry'){document.getElementById('T-entry').style.display='';initEntryDate();}
   else if(tab==='all'){document.getElementById('T-all').style.display='';renderAll();}
   else if(tab==='unassigned'){document.getElementById('T-unassigned').style.display='';renderUnassigned();}
+  else if(tab==='deleted'){document.getElementById('T-deleted').style.display='';renderDeleted();}
   else{document.getElementById('T-home').style.display='';}
 }
 
@@ -1300,35 +1384,124 @@ function addSingle(){
   document.getElementById('s_entrydate').value=new Date().toISOString().split('T')[0];
 }
 
-// ── RESET ALL ──
-function openResetConfirm(){
-  closeManageDD();
-  document.getElementById('resetConfirmInput').value='';
-  openM('M-reset');
-  setTimeout(()=>document.getElementById('resetConfirmInput').focus(),200);
+// ── SOFT DELETE — modal দিয়ে remarks নিয়ে deletedList এ রাখে ──
+function deleteDevice(id){
+  const idx = devs.findIndex(x => x.id === id);
+  if(idx === -1) return;
+  document.getElementById('m_del_id').value = id;
+  document.getElementById('m_del_type').value = 'dev';
+  document.getElementById('m_del_remarks').value = '';
+  openM('M-deleteConfirm');
+  setTimeout(()=>document.getElementById('m_del_remarks').focus(), 250);
 }
-function confirmReset(){
-  const val=document.getElementById('resetConfirmInput').value.trim();
-  if(val!=='RESET'){toast('সঠিক confirmation টাইপ করুন!','err');return;}
-  // Clear local
-  localStorage.removeItem('onu_devs');
-  localStorage.removeItem('onu_done');
-  localStorage.removeItem('onu_models');
-  localStorage.removeItem('onu_types');
-  devs=[];doneList=[];
-  models={ONU:['V.SOL V2801SG XPON','V.SOL H665G'],MC:['MC-10/100','MC-SFP Fiber'],'WiFi Router':['TP-Link Archer C6','ASUS RT-AX55'],'MikroTik Router':['hAP ac2','RB750Gr3','hAP ax3'],Radio:['LiteBeam 5AC','PowerBeam M5-400']};
-  customTypes=[...DEFAULT_TYPES];
-  // Clear Google Sheets too
+function deleteDoneItem(id){
+  const idx = doneList.findIndex(x => x.id === id);
+  if(idx === -1) return;
+  document.getElementById('m_del_id').value = id;
+  document.getElementById('m_del_type').value = 'done';
+  document.getElementById('m_del_remarks').value = '';
+  openM('M-deleteConfirm');
+  setTimeout(()=>document.getElementById('m_del_remarks').focus(), 250);
+}
+function confirmDeleteWithRemarks(){
+  const id = document.getElementById('m_del_id').value;
+  const type = document.getElementById('m_del_type').value;
+  const remarks = document.getElementById('m_del_remarks').value.trim();
+  if(!remarks){ toast('❌ Delete কারণ লিখুন!','err'); document.getElementById('m_del_remarks').focus(); return; }
+  if(type === 'dev'){
+    const idx = devs.findIndex(x => x.id === id);
+    if(idx === -1){ closeM('M-deleteConfirm'); return; }
+    const d = devs.splice(idx, 1)[0];
+    deletedList.unshift({...d, _deletedAt: new Date().toISOString(), _fromList: 'devs', _deleteRemarks: remarks});
+  } else {
+    const idx = doneList.findIndex(x => x.id === id);
+    if(idx === -1){ closeM('M-deleteConfirm'); return; }
+    const d = doneList.splice(idx, 1)[0];
+    deletedList.unshift({...d, _deletedAt: new Date().toISOString(), _fromList: 'doneList', _deleteRemarks: remarks});
+  }
+  document.getElementById('m_del_remarks').value = '';
+  closeM('M-deleteConfirm');
+  save();
+  updateStats();
+  rerender();
   if(gsReady) gsPush();
-  updateStats();rebuildTypeSelect();
-  document.querySelectorAll('.tabs-left .tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.manage-dd-item').forEach(i=>i.classList.remove('active-sub'));
-  document.getElementById('manageBtn').style.background='';
-  ALL_PANELS.forEach(id=>{const e=document.getElementById('T-'+id);if(e)e.style.display='none';});
-  document.getElementById('T-home').style.display='';
-  curTab='home';
-  closeM('M-reset');
-  toast('🗑 সব data reset হয়েছে।','inf');
+  toast('🗑 Deleted — Deleted Data tab এ আছে, restore করা যাবে','inf');
+}
+
+// ── RESTORE — deletedList থেকে আগের list এ ফিরিয়ে দেয় ──
+function restoreItem(id){
+  const idx = deletedList.findIndex(x => x.id === id);
+  if(idx === -1) return;
+  const d = deletedList[idx];
+  deletedList.splice(idx, 1);
+  // _fromList দেখে কোথায় ফেরত যাবে ঠিক করে
+  const copy = {...d};
+  delete copy._deletedAt;
+  delete copy._fromList;
+  if(d._fromList === 'doneList'){
+    doneList.unshift(copy);
+  } else {
+    devs.unshift(copy);
+  }
+  save();
+  updateStats();
+  rerender();
+  if(curTab === 'deleted') renderDeleted();
+  if(gsReady) gsPush();
+  toast('✅ Restored! আগের জায়গায় ফিরে গেছে।','ok');
+}
+
+// ── PERMANENT DELETE — সম্পূর্ণ মুছে ফেলে ──
+function permDeleteItem(id){
+  const idx = deletedList.findIndex(x => x.id === id);
+  if(idx === -1) return;
+  const d = deletedList[idx];
+  if(!confirm('Permanently delete "' + (d.sn || d.model || 'this item') + '"?\nএটা আর ফেরানো যাবে না।')) return;
+  deletedList.splice(idx, 1);
+  save();
+  updateStats();
+  renderDeleted();
+  if(gsReady) gsPush();
+  toast('🗑 Permanently deleted','inf');
+}
+
+// ── RENDER DELETED ──
+function renderDeleted(){
+  const q = (document.getElementById('delSearch')?.value||'').toLowerCase();
+  const PM = {rupchan:'Rupchan',tamim:'Tamim',amit:'Amit',nazrul:'Nazrul'};
+  const f = deletedList.filter(d =>
+    !q ||
+    (d.sn||'').toLowerCase().includes(q) ||
+    (d.model||'').toLowerCase().includes(q) ||
+    (d.mac||'').toLowerCase().includes(q)
+  );
+  const tb = document.getElementById('deletedBody');
+  if(!f.length){
+    tb.innerHTML='<tr><td colspan="11"><div class="empty"><div class="empty-ic">🗑</div>কোনো deleted item নেই</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = f.map((d,i) => {
+    const person = d.person ? '<span class="ptag p-'+d.person+'">'+( PM[d.person]||d.person)+'</span>' : '<span style="color:var(--muted)">Unassigned</span>';
+    const status = d._fromList==='doneList' ? '<span class="badge b-done">● Done</span>' :
+      d.status==='provided' ? '<span class="badge b-prov">● Provided</span>' :
+      '<span class="badge b-inhand">● In-Hand</span>';
+    const delDate = d._deletedAt ? fmtDate(d._deletedAt.split('T')[0]) : '—';
+    const delRemarks = d._deleteRemarks ? '<span style="color:var(--danger);font-size:0.71rem;font-weight:600">'+d._deleteRemarks+'</span>' : '<span style="color:var(--muted)">—</span>';
+    return '<tr style="opacity:0.82">' +
+      '<td class="num-cell">' + (i+1) + '</td>' +
+      '<td class="sans" style="font-size:0.72rem">' + (d.itemType||'—') + '</td>' +
+      '<td class="sans" style="font-size:0.72rem">' + (d.model||'—') + '</td>' +
+      '<td class="mono" style="font-weight:600;font-size:0.76rem;text-decoration:line-through;color:var(--muted)">' + (d.sn||'—') + '</td>' +
+      '<td class="mono" style="font-size:0.71rem;color:var(--muted)">' + (d.mac||'—') + '</td>' +
+      '<td class="sans">' + person + '</td>' +
+      '<td class="sans">' + status + '</td>' +
+      '<td class="ua-date">' + fmtDate(d.entryDate||'—') + '</td>' +
+      '<td class="del-date">' + delDate + '</td>' +
+      '<td style="max-width:160px;white-space:normal">' + delRemarks + '</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button class="btn-restore" onclick="restoreItem(\'' + d.id + '\')">↩ Restore</button>' +
+      '</td></tr>';
+  }).join('');
 }
 
 // ── HELPERS ──
@@ -1364,9 +1537,10 @@ function renderPerson(){
   }).join('');
 }
 function personBtns(d){
-  if(d.status==='inhand')return`<button class="btn btn-prov btn-sm" onclick="openProvide('${d.id}')">🟣 Provide</button>`;
-  if(d.status==='provided')return`<button class="btn btn-done btn-sm" onclick="openDoneM('${d.id}')">✅ Done</button> <button class="btn btn-secondary btn-sm" onclick="openReturn('${d.id}')">↩ Return</button>`;
-  return'';
+  const delBtn=`<button class="row-del-btn" onclick="deleteDevice('${d.id}')" title="Delete">🗑</button>`;
+  if(d.status==='inhand')return`<button class="btn btn-prov btn-sm" onclick="openProvide('${d.id}')">🟣 Provide</button> ${delBtn}`;
+  if(d.status==='provided')return`<button class="btn btn-done btn-sm" onclick="openDoneM('${d.id}')">✅ Done</button> <button class="btn btn-secondary btn-sm" onclick="openReturn('${d.id}')">↩ Return</button> ${delBtn}`;
+  return delBtn;
 }
 
 // ── RENDER PROVIDED ──
@@ -1388,6 +1562,7 @@ function renderProvided(){
     <td class="sans">
       <button class="btn btn-done btn-sm" onclick="openDoneM('${d.id}')">✅ Done</button>
       <button class="btn btn-secondary btn-sm" onclick="openReturn('${d.id}')">↩ Return</button>
+      <button class="row-del-btn" onclick="deleteDevice('${d.id}')" title="Delete">🗑</button>
     </td></tr>`).join('');
 }
 
@@ -1419,6 +1594,7 @@ function renderDone(){
     <td style="font-family:var(--font-date);font-weight:700;font-size:0.72rem;color:#7c3aed">${fmtDate(d.provideDate||'—')}</td>
     <td style="font-family:var(--font-date);font-weight:700;font-size:0.73rem;color:var(--done)">${fmtDate(d.doneDate||'—')}</td>
     <td class="sans" style="color:var(--muted);font-size:0.71rem">${d.remarks||'—'}</td>
+    <td><button class="row-del-btn" onclick="deleteDoneItem('${d.id}')" title="Delete">🗑</button></td>
   </tr>`).join('');
 }
 function clearDoneFilters(){
@@ -1445,7 +1621,8 @@ function renderAll(){
     <td class="mono" style="font-size:0.71rem;color:var(--muted)">${d.mac||'—'}</td>
     <td class="sans">${sbadge(d.status)}</td>
     <td class="sans" style="font-size:0.72rem">${d.providedTo?`<b style="color:var(--provided)">${d.providedTo}</b>`:'<span style="color:var(--muted)">—</span>'}</td>
-    <td style="font-family:var(--font-date);font-weight:700;font-size:0.72rem;color:#1d4ed8">${fmtDate(d.entryDate||'—')}</td></tr>`;
+    <td style="font-family:var(--font-date);font-weight:700;font-size:0.72rem;color:#1d4ed8">${fmtDate(d.entryDate||'—')}</td>
+    <td><button class="row-del-btn" onclick="deleteDevice('${d.id}')" title="Delete">🗑</button></td></tr>`;
   }).join('');
 }
 
@@ -1470,6 +1647,7 @@ function renderUnassigned(){
       <button class="assign-btn a-tamim" onclick="askAssign('${d.id}','tamim')">Tamim</button>
       <button class="assign-btn a-amit" onclick="askAssign('${d.id}','amit')">Amit</button>
       <button class="assign-btn a-nazrul" onclick="askAssign('${d.id}','nazrul')">Nazrul</button>
+      <button class="row-del-btn" onclick="deleteDevice('${d.id}')" title="Delete">🗑</button>
     </td>
   </tr>`).join('');
 }
@@ -1558,6 +1736,7 @@ function updateStats(){
   document.getElementById('b-done').textContent=doneList.length;
   document.getElementById('b-all').textContent=devs.filter(d=>d.person).length;
   document.getElementById('b-unassigned').textContent=ua;
+  const delBadge=document.getElementById('b-deleted');if(delBadge)delBadge.textContent=deletedList.length;
 }
 
 // ── MODALS ──
@@ -1579,6 +1758,7 @@ function rerender(){
   else if(curTab==='done')renderDone();
   else if(curTab==='all')renderAll();
   else if(curTab==='unassigned')renderUnassigned();
+  else if(curTab==='deleted')renderDeleted();
 }
 
 // ── INIT ──
